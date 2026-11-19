@@ -1,0 +1,85 @@
+// One named workspace per mode, in Mod+1, Mod+2, Mod+3 order. YouTube is first, so it shows at login
+workspace "youtube"
+workspace "steam"
+workspace "desk"
+
+// YouTube's TV interface only loads for a TV user agent. Its own profile keeps that agent out of the desk browser
+spawn-sh-at-startup "chromium --user-data-dir=$HOME/.local/share/youtube-tv --user-agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Cobalt/25.lts.30.1034943-gold (unlike Gecko) v8/8.8.278.17-jit gles Starboard/15' --app=https://www.youtube.com/tv"
+spawn-sh-at-startup "steam -gamepadui"
+spawn-sh-at-startup "foot"
+
+binds {
+    Mod+1                       hotkey-overlay-title="YouTube"                      { focus-workspace "youtube"; }
+    Mod+2                       hotkey-overlay-title="Steam"                        { focus-workspace "steam"; }
+    Mod+3                       hotkey-overlay-title="Terminal & browser"           { focus-workspace "desk"; }
+
+    Mod+T                       hotkey-overlay-title="Terminal"                     { spawn "foot"; }
+    Mod+B                       hotkey-overlay-title="Browser"                      { spawn "chromium"; }
+
+    Mod+H                       hotkey-overlay-title="Navigate left"                { focus-column-left; }
+    Mod+L                       hotkey-overlay-title="Navigate right"               { focus-column-right; }
+    Mod+Q                       hotkey-overlay-title="Close window" repeat=false    { close-window; }
+    Mod+F                       hotkey-overlay-title="Maximise window"              { maximize-column; }
+
+    XF86AudioRaiseVolume                                                            { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.025+ -l 1.0"; }
+    XF86AudioLowerVolume                                                            { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.025-"; }
+    XF86AudioMute                                                                   { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
+
+    Mod+Shift+Slash             hotkey-overlay-title=null                           { show-hotkey-overlay; }
+}
+
+input {
+    keyboard {
+        xkb {
+            layout "gb(mac)"
+            options "caps:none"
+        }
+    }
+}
+
+cursor {
+    hide-when-typing
+    hide-after-inactive-ms 3000
+}
+
+layout {
+    gaps 12
+    default-column-width { proportion 0.5; }
+
+    focus-ring {
+        width 3
+        active-color "#fbb829"
+    }
+}
+
+prefer-no-csd
+
+window-rule {
+    match app-id=r#"^chrome-www\.youtube\.com__tv"#
+    open-on-workspace "youtube"
+    open-fullscreen true
+}
+
+// Big Picture and every game Steam launches (app ids steam_app_*)
+window-rule {
+    match app-id="^steam"
+    open-on-workspace "steam"
+    open-fullscreen true
+}
+
+window-rule {
+    match app-id="^foot$"
+    match app-id="^chromium-browser$"
+    open-on-workspace "desk"
+}
+
+hotkey-overlay {
+    skip-at-startup
+    hide-not-bound
+}
+
+gestures {
+    hot-corners {
+        off
+    }
+}

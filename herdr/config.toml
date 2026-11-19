@@ -1,0 +1,73 @@
+onboarding = false
+
+[ui]
+tab_bar_right_separator = " "
+mouse_scroll_lines = 1
+
+[[ui.tab_bar_right]]
+type = "datetime"
+format = "%H:%M"
+
+# Reports $git_branch for every space: the branch name, then + if staged and
+# * if unstaged or untracked. Prints nothing, so the tab bar shows no entry.
+[[ui.tab_bar_right]]
+type = "command"
+command = """
+herdr api snapshot | jq -r '.result.snapshot | .workspaces[] as $space | first(.panes[] | select(.workspace_id == $space.workspace_id)) | [$space.workspace_id, $space.tokens.git_branch // "-", .cwd] | join(" ")' |
+while read -r space reported directory; do
+  branch=$(git -C "$directory" branch --show-current 2>/dev/null)
+  changes=$(git -C "$directory" --no-optional-locks status --porcelain 2>/dev/null)
+
+  if echo "$changes" | grep -q '^[^ ?]'; then branch="$branch+"; fi
+  if echo "$changes" | grep -q '^.[^ ]'; then branch="$branch*"; fi
+
+  if [ "${branch:--}" = "$reported" ]; then continue; fi
+
+  herdr workspace report-metadata "$space" --source git-branch --token "git_branch=$branch" >/dev/null
+done
+"""
+interval_seconds = 5
+timeout_seconds = 2
+
+[ui.sidebar.spaces]
+rows = [["state_icon", "workspace"], ["$git_branch", "git_status"]]
+
+[ui.toast]
+delivery = "herdr"
+
+[ui.sound]
+enabled = false
+
+[theme]
+name = "terminal"
+
+[keys]
+prefix = "ctrl+a"
+
+# Yazi as a popup file browser. Inside yazi, W opens the hovered folder as a
+# new Herdr workspace (see yazi/keymap.toml).
+[[keys.command]]
+key = "prefix+f"
+type = "popup"
+command = "yazi \"${HERDR_ACTIVE_PANE_CWD:-$HOME}\""
+width = "80%"
+height = "80%"
+description = "file browser"
+
+[[keys.command]]
+key = "prefix+d"
+type = "plugin_action"
+command = "persiyanov.reviewr.toggle"
+description = "reviewr diff pane"
+
+[[keys.command]]
+key = "prefix+t"
+type = "plugin_action"
+command = "chmarax.herdr-nvim.toggle"
+description = "nvim sidebar"
+
+[[keys.command]]
+key = "prefix+i"
+type = "plugin_action"
+command = "chmarax.herdr-nvim.pick-file"
+description = "nvim file picker"

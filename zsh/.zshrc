@@ -1,0 +1,103 @@
+# PATH additions
+export PATH=$PATH:$HOME/.cargo/bin
+export PATH=$PATH:$HOME/.local/bin
+export PATH=$PATH:$HOME/.npm/bin
+export PATH=$PATH:$HOME/go/bin
+
+# Draw with the terminal's 16 ANSI colours
+export FZF_DEFAULT_OPTS='--color=16'
+
+# Aliases
+alias l='eza -l'
+alias ll='eza -la'
+alias lt='eza --tree'
+alias v="nvim -R -c 'nnoremap q <cmd>qa!<cr>' --"
+alias rm='trash-put'
+
+alias gs='git status -u'
+alias gd='herdr-reviewr'
+alias gl='git log'
+alias gc='git add . && git commit -m'
+alias gp='git pull'
+alias gpp='git push'
+alias gbd='git branch -d'
+alias gbD='git branch -D'
+alias gco='git checkout'
+alias gcb='git checkout -b'
+alias gt='eza --tree --long --git --git-ignore --no-permissions --no-user --no-time --no-filesize'
+
+alias make='make -j16'
+alias clean='make clean'
+alias debug='make debug'
+alias recover='make recover'
+alias rtt='make rtt'
+alias release='make release'
+
+alias rebuild='sudo nixos-rebuild switch --flake ~/.config#haven'
+alias update='nix flake update --flake ~/.config && sudo nixos-rebuild switch --flake ~/.config#haven'
+
+if [[ -n ${SSH_CONNECTION:-} ]]; then
+  alias sudo='sudo '
+
+  alias reboot='echo "Blocked over SSH: reboot"'
+  alias poweroff='echo "Blocked over SSH: poweroff"'
+  alias halt='echo "Blocked over SSH: halt"'
+  alias shutdown='echo "Blocked over SSH: shutdown"'
+  alias suspend='echo "Blocked over SSH: suspend"'
+  alias hibernate='echo "Blocked over SSH: hibernate"'
+fi
+
+# Clear scrollback + screen
+function clear-scrollback-and-screen { printf '\033[3J'; zle clear-screen }
+zle -N clear-scrollback-and-screen
+bindkey '^o' clear-scrollback-and-screen
+
+setopt autocd
+unsetopt BEEP
+
+# History
+mkdir -p ~/.local/state/zsh
+export HISTFILE=~/.local/state/zsh/history
+export HISTSIZE=1000000
+export SAVEHIST=$HISTSIZE
+setopt EXTENDED_HISTORY
+setopt HIST_EXPIRE_DUPS_FIRST
+setopt HIST_FIND_NO_DUPS
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_SAVE_NO_DUPS
+setopt HIST_VERIFY
+setopt SHARE_HISTORY
+
+# Keep plain navigation and viewing commands out of the history file
+zshaddhistory() {
+  emulate -L zsh
+  local line=${1%%$'\n'}
+  local -a words=(${(z)line})
+  [[ $line == *[\|\;\&\<\>\$\`\(]* ]] && return 0
+  case $words[1] in
+    ls|l|ll|la|lt|cd|which|man|less|clear|pwd|exit) return 2 ;;
+    cat|rm|mkdir) (( $#words == 2 )) && return 2 ;;
+  esac
+  return 0
+}
+
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+bindkey "$terminfo[kcuu1]" history-substring-search-up
+bindkey "$terminfo[kcud1]" history-substring-search-down
+bindkey '^[[1;5D' backward-word
+bindkey '^[[1;5C' forward-word
+bindkey '^[[1;2H' backward-kill-line
+
+source ~/.config/zsh/prompt.zsh
+
+# zsh plugins are installed and loaded by NixOS (programs.zsh in
+# configuration.nix). zoxide is a tool, so init it here.
+eval "$(zoxide init zsh --cmd cd)"
+
+# Start the terminal multiplexer if connecting over SSH
+if [[ -n $SSH_CONNECTION && -z $HERDR_ENV && -z $NO_HERDR ]]; then
+  herdr
+fi

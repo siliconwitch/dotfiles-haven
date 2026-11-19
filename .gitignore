@@ -1,0 +1,19 @@
+# This repo is cloned as raj's ~/.config, so ignore everything by default and
+# explicitly allow only the files we track.
+/*
+!/.gitignore
+!/README.md
+!/flake.nix
+!/flake.lock
+!/configuration.nix
+!/hardware-configuration.nix
+!/tv/
+!/zsh/
+!/git/
+!/nvim/
+!/herdr/
+/herdr/*
+!/herdr/config.toml
+
+# Runtime junk inside tracked dirs
+zsh/.zcompdump*

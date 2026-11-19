@@ -1,0 +1,7 @@
+[merge]
+    conflictStyle = zdiff3
+[user]
+	name = Raj Nakarja
+	email = raj@siliconwitchery.com
+[init]
+	defaultBranch = main
