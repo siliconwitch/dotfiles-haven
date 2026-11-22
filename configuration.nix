@@ -20,20 +20,20 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
-  # Root disk. The TPM releases its key while PCR 7 (Secure Boot state) matches, otherwise it asks for the passphrase
-  boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = [ "tpm2-device=auto" ];
+  # tv volume. The TPM releases its key while PCR 7 (Secure Boot state) matches, otherwise it asks for the passphrase
+  boot.initrd.luks.devices.tv.crypttabExtraOpts = [ "tpm2-device=auto" ];
 
-  # Work volume, mounted as raj's home. Only its passphrase opens it, so it stays locked after boot
+  # raj volume, mounted as raj's home. Only its passphrase opens it, so it stays locked after boot
   # until `sudo systemctl start home-raj.mount`
   environment.etc.crypttab.text = ''
-    work /dev/disk/by-partlabel/work none noauto
+    raj /dev/disk/by-partlabel/raj none noauto
   '';
   fileSystems."/home/raj" = {
-    device = "/dev/mapper/work";
+    device = "/dev/mapper/raj";
     fsType = "ext4";
-    options = [ "noauto" "x-systemd.requires=systemd-cryptsetup@work.service" ];
+    options = [ "noauto" "x-systemd.requires=systemd-cryptsetup@raj.service" ];
   };
-  # While locked, /home/raj is this read-only directory on the root disk, so nothing lands there unencrypted.
+  # While locked, /home/raj is this read-only directory on the tv volume, so nothing lands there unencrypted.
   # Boot only (!), because a rebuild would otherwise reset the mounted volume's ownership
   systemd.tmpfiles.rules = [ "d! /home/raj 0555 root root -" ];
 
@@ -134,7 +134,7 @@
   # Users. raj is the admin and remote work user. tv has no password and only logs in through greetd
   users.users.raj = {
     isNormalUser = true;
-    createHome = false; # the work volume is the home
+    createHome = false; # the raj volume is the home
     extraGroups = [ "wheel" ];
     shell = pkgs.zsh;
     openssh.authorizedKeys.keys = [

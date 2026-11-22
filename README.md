@@ -11,17 +11,17 @@ NixOS for the ASUS PN51-E1 under the projector. It is a media center for the cou
 ## Users and encryption
 
 - **tv** logs in at boot and runs the TV desktop. It has no password, no sudo and no SSH access.
-- **raj** is the admin and the only SSH user. Its home is the work volume.
+- **raj** is the admin and the only SSH user. Its home is the `raj` volume.
 
 The disk has three partitions:
 
 | Partition | Encryption | Unlocks |
 | --- | --- | --- |
 | `ESP` | None | - |
-| `root` | LUKS | At boot by the TPM, while Secure Boot is unchanged (PCR 7). The passphrase is the fallback. |
-| `work` | LUKS | Only by its passphrase, with `sudo systemctl start home-raj.mount` |
+| `tv` | LUKS | At boot by the TPM, while Secure Boot is unchanged (PCR 7). The passphrase is the fallback. |
+| `raj` | LUKS | Only by its passphrase, with `sudo systemctl start home-raj.mount` |
 
-While the work volume is locked, `/home/raj` is an empty read-only directory. SSH keys still work, because NixOS keeps them in `/etc/ssh/authorized_keys.d`.
+While the `raj` volume is locked, `/home/raj` is an empty read-only directory. SSH keys still work, because NixOS keeps them in `/etc/ssh/authorized_keys.d`.
 
 ## TV desktop
 
@@ -39,9 +39,16 @@ To upscale a game, set its Steam launch options to `gamescope -w 1280 -h 720 -f 
 
 ## Install
 
-A minimal-ISO install onto encrypted partitions, then a switch to this flake with Secure Boot and TPM unlocking.
+A minimal-ISO install of this flake straight onto encrypted partitions, then Secure Boot and TPM unlocking.
 
-1. In the BIOS, enable the firmware TPM and Secure Boot. Put Secure Boot into setup mode by erasing the existing Platform Key. In setup mode the firmware boots unsigned images, so the installer still starts. Some ASUS boards need `OS Type` set to "Windows UEFI Mode" for Secure Boot to turn on. Don't clear every Secure Boot key, because that also drops the forbidden signature database (dbx).
+1. In the BIOS (F2 or Del at power on):
+
+    - **Advanced → Trusted Computing:** keep Security Device Support enabled and Pending Operation at None.
+    - **Advanced → Restore AC Power Loss:** set both AC power loss items to Power On, so haven boots by itself after a power cut.
+    - **Advanced → HDMI CEC Control:** leave it disabled, so switching the projector off can't shut haven down.
+    - **Boot → Secure Boot:** set Factory Key Provision to Disabled first, or the firmware reinstalls its keys on the next boot. Then choose Reset To Setup Mode. In setup mode the firmware boots unsigned images, so the installer still starts.
+
+    Press F10 to save.
 
 2. Download the **Minimal ISO** from [NixOS](https://nixos.org/download/#nixos-iso), then write it to a USB stick:
 
@@ -50,116 +57,95 @@ A minimal-ISO install onto encrypted partitions, then a switch to this flake wit
     sudo dd if=nixos-minimal-*.iso of=/dev/sdX bs=4M status=progress oflag=sync
     ```
 
-3. Boot the stick and switch to superuser:
+3. Boot the stick and choose the installer with the latest kernel, not LTS. haven runs the latest kernel, so Wi-Fi in the installer behaves as it will after install. Then switch to superuser and check that the output shows `Secure Boot: disabled (setup)` and `TPM2 Support: yes`:
 
     ```sh
     sudo -i
+    bootctl
     ```
 
-4. Partition the disk. The names become the partition labels the config refers to. Size `root` for the Nix store and Steam games:
+4. Connect to Wi-Fi:
 
     ```sh
-    lsblk # to check which disk to wipe. e.g. nvme0n1
-    wipefs -a /dev/nvme0n1
-
-    parted /dev/nvme0n1 -- mklabel gpt
-    parted /dev/nvme0n1 -- mkpart ESP fat32 1MiB 1GiB
-    parted /dev/nvme0n1 -- set 1 esp on
-    parted /dev/nvme0n1 -- mkpart root 1GiB 128GiB
-    parted /dev/nvme0n1 -- mkpart work 128GiB 100%
+    nmcli device wifi connect "YOUR-NETWORK" --ask
     ```
 
-5. Set up encryption. Use a different passphrase for each volume. The `root` passphrase is the recovery passphrase for when the TPM refuses:
+5. Find the disk with `lsblk`, then partition it. The config finds the partitions by these names. Size `tv` for the Nix store and Steam games:
 
     ```sh
-    cryptsetup luksFormat /dev/disk/by-partlabel/root
-    cryptsetup luksFormat /dev/disk/by-partlabel/work
-
-    cryptsetup open /dev/disk/by-partlabel/root cryptroot
-    cryptsetup open /dev/disk/by-partlabel/work work
-
-    mkfs.ext4 -L nixos /dev/mapper/cryptroot
-    mkfs.ext4 -L work /dev/mapper/work
-    mkfs.fat -F32 -n boot /dev/disk/by-partlabel/ESP
-
-    cryptsetup close work
-
-    mount /dev/disk/by-label/nixos /mnt
-    mkdir /mnt/boot
-    mount /dev/disk/by-label/boot /mnt/boot
+    parted -s /dev/nvme0n1 -- mklabel gpt mkpart ESP fat32 1MiB 1GiB set 1 esp on mkpart tv 1GiB 256GiB mkpart raj 256GiB 100%
     ```
 
-6. Generate the base config and install. Set the root password when asked:
+6. Encrypt, format and mount the partitions. Use a different passphrase for each volume. The `tv` passphrase is the recovery passphrase for when the TPM refuses:
 
     ```sh
-    nixos-generate-config --root /mnt
-    nixos-install
-    reboot
+    cd /dev/disk/by-partlabel
+    cryptsetup luksFormat tv
+    cryptsetup luksFormat raj
+    cryptsetup open tv tv
+    cryptsetup open raj raj
+    mkfs.ext4 -L tv /dev/mapper/tv
+    mkfs.ext4 -L raj /dev/mapper/raj
+    mkfs.fat -F32 -n boot ESP
+    cryptsetup close raj
+    mount /dev/mapper/tv /mnt
+    mount -m ESP /mnt/boot
     ```
 
-7. Log in as `root` and create the Secure Boot keys:
+7. Clone this repo, generate the hardware config into it and create the Secure Boot keys. Flakes only see files git tracks, so the hardware config needs adding:
 
     ```sh
+    git clone https://github.com/siliconwitch/dotfiles-haven /mnt/root/haven
+    cd /mnt/root/haven
+    nixos-generate-config --root /mnt --dir .
+    git add -N hardware-configuration.nix
     nix-shell -p sbctl --run "sbctl create-keys"
+    cp -a --parents /var/lib/sbctl /mnt
     ```
 
-8. Clone this repo and switch to it. Flakes only see files git tracks, so the generated hardware config needs adding:
+8. Install, then set raj's password before rebooting, because SSH accepts passwords. root gets no password; raj uses sudo:
 
     ```sh
-    nix-shell -p git
-    git clone https://github.com/siliconwitch/dotfiles-haven /root/haven
-    cp /etc/nixos/hardware-configuration.nix /root/haven
-    git -C /root/haven add --intent-to-add hardware-configuration.nix
-
-    # Apply the config. This creates the raj and tv users
-    nixos-rebuild switch --flake /root/haven#haven
-    ```
-
-9. Set raj's password before anything else, because SSH accepts passwords:
-
-    ```sh
-    passwd raj
-    ```
-
-10. Check every boot file is signed. The `kernel-` files are expected to be unsigned:
-
-    ```sh
-    sbctl verify
-    ```
-
-11. Enroll the keys. This takes the firmware out of setup mode, so from the next boot it only runs images signed with them:
-
-    ```sh
-    sbctl enroll-keys --microsoft
+    nixos-install --flake .#haven --no-root-passwd
+    nixos-enter -c 'passwd raj'
     reboot
     ```
 
-12. Log in as `root` and confirm Secure Boot is on. It should say `Secure Boot: enabled (user)`:
+9. Type the `tv` passphrase at boot. The TV desktop starts on the first console. Press Ctrl+Alt+F2 for a text console, log in as raj and connect to Wi-Fi:
 
     ```sh
-    bootctl status
+    iwctl station wlp3s0 connect "YOUR-NETWORK"
     ```
 
-13. Enroll the TPM on the root volume. Do this after Secure Boot is on, because turning it on changes PCR 7:
+10. Check every boot file is signed, then enroll the keys. The `kernel-` files are expected to be unsigned. Enrolling takes the firmware out of setup mode, so from the next boot it only runs images signed with these keys:
 
     ```sh
-    systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/disk/by-partlabel/root
+    sudo sbctl verify
+    sudo sbctl enroll-keys --microsoft
+    sudo reboot
     ```
 
-14. Unlock the work volume, then move the config into place as raj's dotfiles:
+11. Type the `tv` passphrase again and log in as raj on Ctrl+Alt+F2. Confirm Secure Boot is on, then enroll the TPM. Do this after Secure Boot is on, because turning it on changes PCR 7:
 
     ```sh
-    systemctl start home-raj.mount
-    chown raj:users /home/raj
-    chmod 700 /home/raj
-
-    mv /root/haven /home/raj/.config
-    chown -R raj:users /home/raj/.config
+    bootctl # Secure Boot: enabled (user)
+    sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/disk/by-partlabel/tv
     ```
 
-15. Reboot. It should go straight to YouTube without asking for a passphrase. Sign in to YouTube and Steam on the TV.
+12. Unlock the `raj` volume, then move the config into place as raj's dotfiles:
 
-16. From the laptop, SSH in as raj, unlock the work volume and connect Tailscale:
+    ```sh
+    sudo systemctl start home-raj.mount
+    sudo chown raj:users /home/raj
+    sudo chmod 700 /home/raj
+
+    sudo mv /root/haven /home/raj/.config
+    sudo chown -R raj:users /home/raj/.config
+    ```
+
+13. Reboot. It should go straight to YouTube without asking for a passphrase. Sign in to YouTube and Steam on the TV.
+
+14. From the laptop, SSH in as raj, unlock the `raj` volume and connect Tailscale:
 
     ```sh
     ssh -p 3439 raj@<haven's LAN address>
@@ -168,21 +154,26 @@ A minimal-ISO install onto encrypted partitions, then a switch to this flake wit
     sudo tailscale up
     ```
 
-17. Create an SSH key for GitHub access:
+15. Create an SSH key for GitHub access, then commit the hardware config:
 
     ```sh
     ssh-keygen -t ed25519 -C "raj@haven"
     cat ~/.ssh/id_ed25519.pub # add at GitHub → Settings → SSH and GPG keys
+
+    git -C ~/.config remote set-url origin git@github.com:siliconwitch/dotfiles-haven.git
+    git -C ~/.config add hardware-configuration.nix
+    git -C ~/.config commit -m "Add haven hardware config"
+    git -C ~/.config push
     ```
 
-18. Log in to Claude Code and GitHub:
+16. Log in to Claude Code and GitHub:
 
     ```sh
     claude
     gh auth login
     ```
 
-19. Install the Herdr plugins. Herdr comes from Nix, but its plugins are git checkouts that Herdr keeps under `~/.config/herdr/plugins/`, outside this repo:
+17. Install the Herdr plugins. Herdr comes from Nix, but its plugins are git checkouts that Herdr keeps under `~/.config/herdr/plugins/`, outside this repo:
 
     ```sh
     herdr plugin install persiyanov/herdr-reviewr --yes
@@ -191,7 +182,7 @@ A minimal-ISO install onto encrypted partitions, then a switch to this flake wit
 
 ## Daily use
 
-The work volume is locked after every boot. Over SSH, unlock it and start a fresh shell so zsh loads raj's config:
+The `raj` volume is locked after every boot. Over SSH, unlock it and start a fresh shell so zsh loads raj's config:
 
 ```sh
 sudo systemctl start home-raj.mount
@@ -201,7 +192,7 @@ cd ~ && exec zsh -l
 To lock it again, close every shell and Herdr session using it, then:
 
 ```sh
-sudo systemctl stop systemd-cryptsetup@work.service
+sudo systemctl stop systemd-cryptsetup@raj.service
 ```
 
 ## Rebuilds
