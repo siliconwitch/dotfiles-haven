@@ -53,6 +53,8 @@
   # Networking
   networking.hostName = "haven";
   networking.wireless.iwd.enable = true;
+  # The router doesn't steer bands (steering crashes the 8265's firmware), so prefer 5 GHz here
+  networking.wireless.iwd.settings.Rank.BandModifier5GHz = 2.0;
   services.tailscale = {
     enable = true;
     openFirewall = true;

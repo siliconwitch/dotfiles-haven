@@ -114,7 +114,7 @@ A minimal-ISO install of this flake straight onto encrypted partitions, then Sec
 9. Type the `tv` passphrase at boot. The TV desktop starts on the first console. Press Ctrl+Alt+F2 for a text console, log in as raj and connect to Wi-Fi:
 
     ```sh
-    iwctl station wlp3s0 connect "YOUR-NETWORK"
+    iwctl station wlan0 connect "YOUR-NETWORK"
     ```
 
 10. Check every boot file is signed, then enroll the keys. The `kernel-` files are expected to be unsigned. Enrolling takes the firmware out of setup mode, so from the next boot it only runs images signed with these keys:
