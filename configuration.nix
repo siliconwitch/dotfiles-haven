@@ -24,7 +24,7 @@
   boot.initrd.luks.devices.tv.crypttabExtraOpts = [ "tpm2-device=auto" ];
 
   # raj volume, mounted as raj's home. Only its passphrase opens it, so it stays locked after boot
-  # until `sudo unlock-raj`. It has no fileSystems entry, because systemd makes every raj login wait for one
+  # until `sudo unlock-raj`
   environment.etc.crypttab.text = ''
     raj /dev/disk/by-partlabel/raj none noauto
   '';
@@ -48,9 +48,7 @@
   # Networking
   networking.hostName = "haven";
   networking.wireless.iwd.enable = true;
-  # The router doesn't steer bands (steering crashes the 8265's firmware), so prefer 5 GHz here
   networking.wireless.iwd.settings.Rank.BandModifier5GHz = 2.0;
-  # With power saving on, the router holds haven's downlink while the card sleeps: <1 MB/s and seconds of lag
   networking.wireless.iwd.settings.DriverQuirks.PowerSaveDisable = "iwlwifi";
   services.tailscale = {
     enable = true;
