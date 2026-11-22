@@ -5,7 +5,7 @@ NixOS for the ASUS PN51-E1 under the projector. It is a media center for the cou
 ## Layout
 
 - **Nix defines the OS**: `configuration.nix` (+ machine-generated `hardware-configuration.nix`) describes the system and installs all packages.
-- **raj's dotfiles**: `zsh/`, `git/`, `nvim/` and `herdr/`. The repo is cloned as raj's `~/.config`, so they land in place without symlinking.
+- **raj's dotfiles**: `zsh/`, `git/` and `nvim/`. The repo is cloned as raj's `~/.config`, so they land in place without symlinking.
 - **TV dotfiles**: `tv/niri/` and `tv/foot/`. Nix installs them into `/etc`, because raj's home is still locked when the TV logs in.
 
 ## Users and encryption
@@ -173,13 +173,6 @@ A minimal-ISO install of this flake straight onto encrypted partitions, then Sec
     gh auth login
     ```
 
-17. Install the Herdr plugins. Herdr comes from Nix, but its plugins are git checkouts that Herdr keeps under `~/.config/herdr/plugins/`, outside this repo:
-
-    ```sh
-    herdr plugin install persiyanov/herdr-reviewr --yes
-    herdr plugin install ChmaraX/herdr-nvim --yes
-    ```
-
 ## Daily use
 
 The `raj` volume is locked after every boot. Over SSH, unlock it and start a fresh shell so zsh loads raj's config:
@@ -189,7 +182,7 @@ sudo unlock-raj
 cd ~ && exec zsh -l
 ```
 
-To lock it again, close every shell and Herdr session using it, then:
+To lock it again, close every shell using it, then:
 
 ```sh
 sudo umount /home/raj

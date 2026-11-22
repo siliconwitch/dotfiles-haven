@@ -50,6 +50,8 @@
   networking.wireless.iwd.enable = true;
   # The router doesn't steer bands (steering crashes the 8265's firmware), so prefer 5 GHz here
   networking.wireless.iwd.settings.Rank.BandModifier5GHz = 2.0;
+  # With power saving on, the router holds haven's downlink while the card sleeps: <1 MB/s and seconds of lag
+  networking.wireless.iwd.settings.DriverQuirks.PowerSaveDisable = "iwlwifi";
   services.tailscale = {
     enable = true;
     openFirewall = true;
@@ -166,7 +168,6 @@
     fzf                              # fuzzy finder
     gh                               # Github CLI
     git
-    herdr                            # terminal multiplexer
     impala                           # Wi-Fi TUI
     jq                               # JSON processor
     netcat-openbsd                   # nc (zsh prompt)

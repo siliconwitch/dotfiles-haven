@@ -11,9 +11,6 @@
 !/zsh/
 !/git/
 !/nvim/
-!/herdr/
-/herdr/*
-!/herdr/config.toml
 
 # Runtime junk inside tracked dirs
 zsh/.zcompdump*

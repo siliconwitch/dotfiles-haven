@@ -15,7 +15,6 @@ alias v="nvim -R -c 'nnoremap q <cmd>qa!<cr>' --"
 alias rm='trash-put'
 
 alias gs='git status -u'
-alias gd='herdr-reviewr'
 alias gl='git log'
 alias gc='git add . && git commit -m'
 alias gp='git pull'
@@ -96,8 +95,3 @@ source ~/.config/zsh/prompt.zsh
 # zsh plugins are installed and loaded by NixOS (programs.zsh in
 # configuration.nix). zoxide is a tool, so init it here.
 eval "$(zoxide init zsh --cmd cd)"
-
-# Start the terminal multiplexer if connecting over SSH
-if [[ -n $SSH_CONNECTION && -z $HERDR_ENV && -z $NO_HERDR ]]; then
-  herdr
-fi

@@ -56,4 +56,4 @@ zstyle ':vcs_info:git*+set-message:*' hooks git-untracked git-aheadbehind
 }
 
 setopt PROMPT_SUBST
-export PROMPT='%F{13}%1~$vcs_info_msg_0_ '
+export PROMPT='%F{yellow}%m %F{13}%1~$vcs_info_msg_0_ '
