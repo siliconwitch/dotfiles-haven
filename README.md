@@ -19,7 +19,7 @@ The disk has three partitions:
 | --- | --- | --- |
 | `ESP` | None | - |
 | `tv` | LUKS | At boot by the TPM, while Secure Boot is unchanged (PCR 7). The passphrase is the fallback. |
-| `raj` | LUKS | Only by its passphrase, with `sudo systemctl start home-raj.mount` |
+| `raj` | LUKS | Only by its passphrase, with `sudo unlock-raj` |
 
 While the `raj` volume is locked, `/home/raj` is an empty read-only directory. SSH keys still work, because NixOS keeps them in `/etc/ssh/authorized_keys.d`.
 
@@ -135,7 +135,7 @@ A minimal-ISO install of this flake straight onto encrypted partitions, then Sec
 12. Unlock the `raj` volume, then move the config into place as raj's dotfiles:
 
     ```sh
-    sudo systemctl start home-raj.mount
+    sudo unlock-raj
     sudo chown raj:users /home/raj
     sudo chmod 700 /home/raj
 
@@ -149,7 +149,7 @@ A minimal-ISO install of this flake straight onto encrypted partitions, then Sec
 
     ```sh
     ssh -p 3439 raj@<haven's LAN address>
-    sudo systemctl start home-raj.mount
+    sudo unlock-raj
     cd ~ && exec zsh -l
     sudo tailscale up
     ```
@@ -185,13 +185,14 @@ A minimal-ISO install of this flake straight onto encrypted partitions, then Sec
 The `raj` volume is locked after every boot. Over SSH, unlock it and start a fresh shell so zsh loads raj's config:
 
 ```sh
-sudo systemctl start home-raj.mount
+sudo unlock-raj
 cd ~ && exec zsh -l
 ```
 
 To lock it again, close every shell and Herdr session using it, then:
 
 ```sh
+sudo umount /home/raj
 sudo systemctl stop systemd-cryptsetup@raj.service
 ```
 

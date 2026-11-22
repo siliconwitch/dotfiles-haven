@@ -24,15 +24,10 @@
   boot.initrd.luks.devices.tv.crypttabExtraOpts = [ "tpm2-device=auto" ];
 
   # raj volume, mounted as raj's home. Only its passphrase opens it, so it stays locked after boot
-  # until `sudo systemctl start home-raj.mount`
+  # until `sudo unlock-raj`. It has no fileSystems entry, because systemd makes every raj login wait for one
   environment.etc.crypttab.text = ''
     raj /dev/disk/by-partlabel/raj none noauto
   '';
-  fileSystems."/home/raj" = {
-    device = "/dev/mapper/raj";
-    fsType = "ext4";
-    options = [ "noauto" "x-systemd.requires=systemd-cryptsetup@raj.service" ];
-  };
   # While locked, /home/raj is this read-only directory on the tv volume, so nothing lands there unencrypted.
   # Boot only (!), because a rebuild would otherwise reset the mounted volume's ownership
   systemd.tmpfiles.rules = [ "d! /home/raj 0555 root root -" ];
@@ -178,6 +173,11 @@
     ripgrep                          # rg
     sbctl                            # Secure Boot keys
     trash-cli                        # rm alias
+    (writeShellScriptBin "unlock-raj" ''
+      set -e
+      systemctl start systemd-cryptsetup@raj.service
+      mountpoint -q /home/raj || mount /dev/mapper/raj /home/raj
+    '')
     unzip
     wiremix                          # PipeWire TUI mixer
     yazi                             # file manager
