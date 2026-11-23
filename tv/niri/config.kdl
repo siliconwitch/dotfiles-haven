@@ -3,6 +3,11 @@ workspace "youtube"
 workspace "steam"
 workspace "desk"
 
+output "HDMI-A-1" {
+    mode "3840x2160" // the projector's 4K tops out at 30 Hz
+    scale 2          // keeps the 1080p layout size
+}
+
 // YouTube's TV interface only loads for a TV user agent. Its own profile keeps that agent out of the desk browser
 spawn-sh-at-startup "chromium --user-data-dir=$HOME/.local/share/youtube-tv --user-agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Cobalt/25.lts.30.1034943-gold (unlike Gecko) v8/8.8.278.17-jit gles Starboard/15' --app=https://www.youtube.com/tv"
 spawn-sh-at-startup "steam -gamepadui"
