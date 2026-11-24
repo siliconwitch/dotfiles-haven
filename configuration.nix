@@ -23,10 +23,17 @@
   # tv volume. The TPM releases its key while PCR 7 (Secure Boot state) matches, otherwise it asks for the passphrase
   boot.initrd.luks.devices.tv.crypttabExtraOpts = [ "tpm2-device=auto" ];
 
-  # raj volume, mounted as raj's home. Only its passphrase opens it, so it stays locked after boot
-  # until `sudo unlock-raj`
+  # raj volume, mounted as raj's home. Only its passphrase opens it, so raj's first login after boot unlocks it
   environment.etc.crypttab.text = ''
     raj /dev/disk/by-partlabel/raj none noauto
+  '';
+  # The login shell starts in the locked directory, so it moves into the mounted home and restarts to load raj's config
+  programs.zsh.loginShellInit = ''
+    if [[ $USER == raj ]] && ! mountpoint -q /home/raj; then
+      sudo systemctl start systemd-cryptsetup@raj.service &&
+        sudo mount /dev/mapper/raj /home/raj &&
+        cd ~ && exec zsh -l
+    fi
   '';
   # While locked, /home/raj is this read-only directory on the tv volume, so nothing lands there unencrypted.
   # Boot only (!), because a rebuild would otherwise reset the mounted volume's ownership
@@ -172,11 +179,6 @@
     ripgrep                          # rg
     sbctl                            # Secure Boot keys
     trash-cli                        # rm alias
-    (writeShellScriptBin "unlock-raj" ''
-      set -e
-      systemctl start systemd-cryptsetup@raj.service
-      mountpoint -q /home/raj || mount /dev/mapper/raj /home/raj
-    '')
     unzip
     wiremix                          # PipeWire TUI mixer
     yazi                             # file manager

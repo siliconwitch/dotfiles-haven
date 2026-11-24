@@ -19,7 +19,7 @@ The disk has three partitions:
 | --- | --- | --- |
 | `ESP` | None | - |
 | `tv` | LUKS | At boot by the TPM, while Secure Boot is unchanged (PCR 7). The passphrase is the fallback. |
-| `raj` | LUKS | Only by its passphrase, with `sudo unlock-raj` |
+| `raj` | LUKS | Only by its passphrase, at raj's first login after boot. zsh asks for the sudo password, then the passphrase. |
 
 While the `raj` volume is locked, `/home/raj` is an empty read-only directory. SSH keys still work, because NixOS keeps them in `/etc/ssh/authorized_keys.d`.
 
@@ -132,10 +132,9 @@ A minimal-ISO install of this flake straight onto encrypted partitions, then Sec
     sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/disk/by-partlabel/tv
     ```
 
-12. Unlock the `raj` volume, then move the config into place as raj's dotfiles:
+12. Move the config into place as raj's dotfiles. The login in step 11 unlocked the `raj` volume:
 
     ```sh
-    sudo unlock-raj
     sudo chown raj:users /home/raj
     sudo chmod 700 /home/raj
 
@@ -145,12 +144,10 @@ A minimal-ISO install of this flake straight onto encrypted partitions, then Sec
 
 13. Reboot. It should go straight to YouTube without asking for a passphrase. Sign in to YouTube and Steam on the TV.
 
-14. From the laptop, SSH in as raj, unlock the `raj` volume and connect Tailscale:
+14. From the laptop, SSH in as raj, which unlocks the `raj` volume, and connect Tailscale:
 
     ```sh
     ssh -p 3439 raj@<haven's LAN address>
-    sudo unlock-raj
-    cd ~ && exec zsh -l
     sudo tailscale up
     ```
 
@@ -175,12 +172,7 @@ A minimal-ISO install of this flake straight onto encrypted partitions, then Sec
 
 ## Daily use
 
-The `raj` volume is locked after every boot. Over SSH, unlock it and start a fresh shell so zsh loads raj's config:
-
-```sh
-sudo unlock-raj
-cd ~ && exec zsh -l
-```
+The `raj` volume is locked after every boot. raj's first login unlocks it and restarts zsh in the unlocked home. Commands run over SSH without a shell, such as `ssh haven ls`, skip the unlock.
 
 To lock it again, close every shell using it, then:
 
