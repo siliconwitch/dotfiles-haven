@@ -108,6 +108,109 @@
   environment.etc."niri/config.kdl".source = ./tv/niri/config.kdl;
   environment.etc."xdg/foot/foot.ini".source = ./tv/foot/foot.ini;
 
+  # Projector power. niri's Mod+Escape starts this as tv, so it runs as root with its own ADB key and server
+  systemd.services.projector-toggle = {
+    path = [ pkgs.android-tools pkgs.iputils config.hardware.bluetooth.package ];
+    environment = {
+      HOME = "/var/lib/projector-toggle";
+      ANDROID_SERIAL = "169.254.1.2:5555";
+      ANDROID_ADB_SERVER_PORT = "5038"; # apart from any adb server raj runs
+    };
+    serviceConfig = {
+      Type = "oneshot";
+      StateDirectory = "projector-toggle";
+    };
+    script = ''
+      # HDMI 1, which the projector labels "TV"
+      show_haven() {
+        for attempt in $(seq 10); do
+          adb shell am start -a android.intent.action.VIEW -d content://android.media.tv/passthrough/com.droidlogic.tvinput%2F.services.Hdmi1InputService%2FHW5
+          sleep 2
+          if adb shell dumpsys activity activities | grep -m1 mResumedActivity | grep -q com.android.tv/; then
+            return 0
+          fi
+        done
+
+        echo "projector did not switch to HDMI 1" >&2
+        return 1
+      }
+
+      # The projector's Ethernet only answers while it is on or in soft sleep
+      if ping -c1 -W1 169.254.1.2; then
+        adb connect $ANDROID_SERIAL
+        timeout 5 adb wait-for-device
+
+        if adb shell dumpsys power | grep -q mWakefulness=Asleep; then
+          adb shell input keyevent KEYCODE_WAKEUP
+          show_haven
+          exit 0
+        fi
+
+        adb shell input keyevent KEYCODE_POWER # opens the power menu on Power off
+        sleep 1
+        adb shell input keyevent KEYCODE_POWER
+        exit 0
+      fi
+
+      # The controller briefly disappears after an address change, and btmgmt exits 0 even when it fails
+      set_address() {
+        btmgmt power off
+        btmgmt public-addr $1
+        for attempt in $(seq 50); do
+          if info=$(btmgmt info) && grep -q "addr $1" <<< "$info" && grep -q "current settings: powered" <<< "$info"; then
+            return 0
+          fi
+
+          btmgmt power on
+          sleep 0.1
+        done
+
+        echo "Bluetooth controller did not return with address $1" >&2
+        return 1
+      }
+
+      hci() {
+        read -ra reply <<< "$(hcitool -i hci0 cmd 0x08 "$@" | tail -n1)"
+        [[ ''${reply[@]: -1} == 00 ]]
+      }
+
+      # When fully off, the projector wakes only for its paired remote's address and wake advertisement
+      haven_address=84:5C:F3:AA:2F:CF
+      trap 'set_address $haven_address' EXIT
+      set_address 18:BF:1C:50:8A:D1
+      hci 0x0006 20 00 20 00 00 00 00 00 00 00 00 00 00 07 00
+      hci 0x0008 1f 02 01 05 03 ff 00 01 06 08 4d 49 20 52 43 03 02 12 18 04 0d 04 05 00 02 0a 00 04 fe 73 ce f6
+      hci 0x000a 01
+      sleep 10
+      hci 0x000a 00
+      set_address $haven_address
+      trap - EXIT
+
+      for attempt in $(seq 90); do
+        if ping -c1 -W1 169.254.1.2 >/dev/null && adb connect $ANDROID_SERIAL >/dev/null &&
+          timeout 5 adb wait-for-device && [[ $(adb shell getprop sys.boot_completed) == 1* ]]; then
+          show_haven
+          exit 0
+        fi
+
+        sleep 2
+      done
+
+      echo "projector did not boot after the wake advertisement" >&2
+      exit 1
+    '';
+  };
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id == "org.freedesktop.systemd1.manage-units" &&
+          action.lookup("unit") == "projector-toggle.service" &&
+          action.lookup("verb") == "start" &&
+          subject.user == "tv") {
+        return polkit.Result.YES;
+      }
+    });
+  '';
+
   # Games
   programs.steam.enable = true;
   programs.gamescope.enable = true;
@@ -154,6 +257,7 @@
   # Packages
   environment.systemPackages = with pkgs; [
     # TV
+    android-tools                    # adb, for the projector
     chromium
     foot                             # terminal
     pulseaudio                       # pactl (talks to pipewire-pulse)

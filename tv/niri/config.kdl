@@ -26,6 +26,8 @@ binds {
     Mod+Q                       hotkey-overlay-title="Close window" repeat=false    { close-window; }
     Mod+F                       hotkey-overlay-title="Maximise window"              { maximize-column; }
 
+    Mod+Escape                  hotkey-overlay-title="Projector on/off" repeat=false { spawn "systemctl" "start" "projector-toggle.service"; }
+
     XF86AudioRaiseVolume                                                            { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.025+ -l 1.0"; }
     XF86AudioLowerVolume                                                            { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.025-"; }
     XF86AudioMute                                                                   { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
