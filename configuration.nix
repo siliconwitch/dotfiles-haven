@@ -48,7 +48,7 @@
   # Networking
   networking.hostName = "haven";
   networking.wireless.iwd.enable = true;
-  networking.wireless.iwd.settings.Rank.BandModifier5GHz = 0.0;
+  networking.wireless.iwd.settings.Rank.BandModifier5GHz = 2.0;
   networking.wireless.iwd.settings.DriverQuirks.PowerSaveDisable = "iwlwifi";
   services.tailscale = {
     enable = true;
