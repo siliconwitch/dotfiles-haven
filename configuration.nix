@@ -107,6 +107,7 @@
   };
   environment.etc."niri/config.kdl".source = ./tv/niri/config.kdl;
   environment.etc."xdg/foot/foot.ini".source = ./tv/foot/foot.ini;
+  environment.etc."wob/wob.ini".source = ./tv/wob/wob.ini;
 
   # Projector power. niri's Mod+Escape starts this as tv, so it runs as root with its own ADB key and server
   systemd.services.projector-toggle = {
@@ -289,6 +290,7 @@
     chromium
     foot                             # terminal
     pulseaudio                       # pactl (talks to pipewire-pulse)
+    wob                              # volume bar
     xwayland-satellite               # X11 support, for Steam
 
     # Shell plugins

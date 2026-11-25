@@ -13,6 +13,9 @@ spawn-sh-at-startup "chromium --user-data-dir=$HOME/.local/share/youtube-tv --us
 spawn-sh-at-startup "steam -gamepadui"
 spawn-sh-at-startup "foot"
 
+// Volume bar. The volume keys write to its FIFO
+spawn-sh-at-startup "mkfifo $XDG_RUNTIME_DIR/wob; tail -f $XDG_RUNTIME_DIR/wob | wob"
+
 binds {
     Mod+1                       hotkey-overlay-title="YouTube"                      { focus-workspace "youtube"; }
     Mod+2                       hotkey-overlay-title="Steam"                        { focus-workspace "steam"; }
@@ -28,9 +31,9 @@ binds {
 
     Mod+Escape                  hotkey-overlay-title="Projector on/off" repeat=false { spawn "systemctl" "start" "projector-toggle.service"; }
 
-    XF86AudioRaiseVolume                                                            { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.025+ -l 1.0"; }
-    XF86AudioLowerVolume                                                            { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.025-"; }
-    XF86AudioMute                                                                   { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
+    XF86AudioRaiseVolume                                                            { spawn-sh r#"wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.025+ -l 1.0 && wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{ printf "%d%s\n", $2 * 100 + 0.5, $3 == "[MUTED]" ? " muted" : "" }' > $XDG_RUNTIME_DIR/wob"#; }
+    XF86AudioLowerVolume                                                            { spawn-sh r#"wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.025- && wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{ printf "%d%s\n", $2 * 100 + 0.5, $3 == "[MUTED]" ? " muted" : "" }' > $XDG_RUNTIME_DIR/wob"#; }
+    XF86AudioMute                                                                   { spawn-sh r#"wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle && wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{ printf "%d%s\n", $2 * 100 + 0.5, $3 == "[MUTED]" ? " muted" : "" }' > $XDG_RUNTIME_DIR/wob"#; }
 
     Mod+Shift+Slash             hotkey-overlay-title=null                           { show-hotkey-overlay; }
 }

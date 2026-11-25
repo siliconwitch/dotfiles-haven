@@ -6,7 +6,7 @@ NixOS for the ASUS PN51-E1 under the projector. It is a media center for the cou
 
 - **Nix defines the OS**: `configuration.nix` (+ machine-generated `hardware-configuration.nix`) describes the system and installs all packages.
 - **raj's dotfiles**: `zsh/`, `git/` and `nvim/`. The repo is cloned as raj's `~/.config`, so they land in place without symlinking.
-- **TV dotfiles**: `tv/niri/` and `tv/foot/`. Nix installs them into `/etc`, because raj's home is still locked when the TV logs in.
+- **TV dotfiles**: `tv/niri/`, `tv/foot/` and `tv/wob/`. Nix installs them into `/etc`, because raj's home is still locked when the TV logs in.
 
 ## Users and encryption
 
