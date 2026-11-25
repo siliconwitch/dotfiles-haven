@@ -183,18 +183,18 @@ sudo systemctl stop systemd-cryptsetup@raj.service
 
 ## Storage Box backup
 
-`storagebox-backup.service` copies the whole Hetzner Storage Box into `~/storagebox` at 04:00 each night:
+`storagebox-backup.service` copies the `vault` folder of the Hetzner Storage Box into `~/storagebox` at 04:00 each night:
 
-- `current/` matches the box as of the last run.
+- `current/` matches `vault` as of the last run.
 - `deleted/<date>-<time>/` holds the files that run deleted or overwrote. Each folder is removed after 30 days.
 
-The box holds rclone crypt ciphertext, so the backup does too, and haven never needs the vault key. The run is skipped while the `raj` volume is locked, so after a reboot the next backup is the first night after raj logs in. The box's `/.zfs` snapshot directory is excluded.
+The box holds rclone crypt ciphertext, so the backup does too, and haven never needs the vault key. The run is skipped while the `raj` volume is locked, so after a reboot the next backup is the first night after raj logs in. The box's `/.zfs` snapshot directory and the sub-account's `.ssh` key directory are excluded.
 
-rclone only deletes after it lists the whole box without errors, so a bad key or a lost connection fails the run and deletes nothing. Each successful run updates `~/storagebox/last-success`. raj's prompt shows `haven (storage box error)` when no run has succeeded in 48 hours.
+rclone only deletes after it lists the whole folder without errors, so a bad key or a lost connection fails the run and deletes nothing. Each successful run updates `~/storagebox/last-success`. raj's prompt shows `haven (storage box error)` when no run has succeeded in 48 hours.
 
 To set it up:
 
-1. In the Hetzner Console, create a sub-account for haven with SSH enabled, read-only access and the whole box as its home directory.
+1. In the Hetzner Console, create a sub-account for haven with `SSH Support` and `External Reachability` on, and `vault` as its base directory.
 
 2. On haven, create a key for it:
 
@@ -202,29 +202,37 @@ To set it up:
     ssh-keygen -t ed25519 -N "" -f ~/.ssh/storagebox
     ```
 
-3. Install the key on the sub-account. This asks for the sub-account's password:
+3. Upload the key to the sub-account. `<sub-account>` is the username the Console shows, such as `u123456-sub1`. This asks for the sub-account's password and writes the key to `vault/.ssh/authorized_keys` on the box:
 
     ```sh
-    cat ~/.ssh/storagebox.pub | ssh -p 23 <sub-account>@<box>.your-storagebox.de install-ssh-key
+    ssh-copy-id -i ~/.ssh/storagebox.pub -p 23 -s <sub-account>@<sub-account>.your-storagebox.de
     ```
 
-4. Add the host to `~/.ssh/config`. The service connects as `storagebox`, which keeps the account details out of this repo:
+4. In the Console, turn `Read-only` on for the sub-account.
+
+5. Add the host to `~/.ssh/config`:
 
     ```
     Host storagebox
-      HostName <box>.your-storagebox.de
+      HostName <sub-account>.your-storagebox.de
       Port 23
       User <sub-account>
       IdentityFile ~/.ssh/storagebox
     ```
 
-5. Connect once to accept the host key and check the login:
+6. Connect once to accept the host key and check the login:
 
     ```sh
     ssh storagebox ls
     ```
 
-6. Start the first run, which downloads the whole box, and follow it:
+7. Check that the sub-account is read-only. This should fail:
+
+    ```sh
+    ssh storagebox mkdir readonly-test
+    ```
+
+8. Start the first run, which downloads all of `vault`, and follow it:
 
     ```sh
     sudo systemctl start --no-block storagebox-backup

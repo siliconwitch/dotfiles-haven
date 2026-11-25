@@ -225,7 +225,7 @@
     };
     script = ''
       backup=/home/raj/storagebox
-      rclone sync :sftp: "$backup/current" --backup-dir "$backup/deleted/$(date +%F-%H%M%S)" --exclude "/.zfs/**"
+      rclone sync :sftp: "$backup/current" --backup-dir "$backup/deleted/$(date +%F-%H%M%S)" --exclude "/.zfs/**" --exclude "/.ssh/**"
 
       shopt -s nullglob
       cutoff=$(date -d "30 days ago" +%F)
