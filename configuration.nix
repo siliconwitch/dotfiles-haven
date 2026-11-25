@@ -211,6 +211,34 @@
     });
   '';
 
+  # Storage Box backup. A nightly copy of the box, keeping deleted and overwritten files for 30 days
+  systemd.services.storagebox-backup = {
+    startAt = "04:00";
+    path = [ pkgs.rclone pkgs.openssh ];
+    environment.RCLONE_SFTP_SSH = "ssh storagebox"; # host, user and key are in raj's ~/.ssh/config, outside this public repo
+    unitConfig.ConditionPathIsMountPoint = "/home/raj"; # skips the run while the raj volume is locked
+    serviceConfig = {
+      Type = "oneshot";
+      User = "raj";
+      Nice = 19;
+      IOSchedulingClass = "idle";
+    };
+    script = ''
+      backup=/home/raj/storagebox
+      rclone sync :sftp: "$backup/current" --backup-dir "$backup/deleted/$(date +%F-%H%M%S)" --exclude "/.zfs/**"
+
+      shopt -s nullglob
+      cutoff=$(date -d "30 days ago" +%F)
+      for folder in "$backup"/deleted/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*; do
+        if [[ $(basename "$folder") < $cutoff ]]; then
+          rm -rf "$folder"
+        fi
+      done
+
+      touch "$backup/last-success" # read by raj's zsh prompt
+    '';
+  };
+
   # Games
   programs.steam.enable = true;
   programs.gamescope.enable = true;

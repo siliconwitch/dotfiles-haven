@@ -181,6 +181,56 @@ sudo umount /home/raj
 sudo systemctl stop systemd-cryptsetup@raj.service
 ```
 
+## Storage Box backup
+
+`storagebox-backup.service` copies the whole Hetzner Storage Box into `~/storagebox` at 04:00 each night:
+
+- `current/` matches the box as of the last run.
+- `deleted/<date>-<time>/` holds the files that run deleted or overwrote. Each folder is removed after 30 days.
+
+The box holds rclone crypt ciphertext, so the backup does too, and haven never needs the vault key. The run is skipped while the `raj` volume is locked, so after a reboot the next backup is the first night after raj logs in. The box's `/.zfs` snapshot directory is excluded.
+
+rclone only deletes after it lists the whole box without errors, so a bad key or a lost connection fails the run and deletes nothing. Each successful run updates `~/storagebox/last-success`. raj's prompt shows `haven (storage box error)` when no run has succeeded in 48 hours.
+
+To set it up:
+
+1. In the Hetzner Console, create a sub-account for haven with SSH enabled, read-only access and the whole box as its home directory.
+
+2. On haven, create a key for it:
+
+    ```sh
+    ssh-keygen -t ed25519 -N "" -f ~/.ssh/storagebox
+    ```
+
+3. Install the key on the sub-account. This asks for the sub-account's password:
+
+    ```sh
+    cat ~/.ssh/storagebox.pub | ssh -p 23 <sub-account>@<box>.your-storagebox.de install-ssh-key
+    ```
+
+4. Add the host to `~/.ssh/config`. The service connects as `storagebox`, which keeps the account details out of this repo:
+
+    ```
+    Host storagebox
+      HostName <box>.your-storagebox.de
+      Port 23
+      User <sub-account>
+      IdentityFile ~/.ssh/storagebox
+    ```
+
+5. Connect once to accept the host key and check the login:
+
+    ```sh
+    ssh storagebox ls
+    ```
+
+6. Start the first run, which downloads the whole box, and follow it:
+
+    ```sh
+    sudo systemctl start --no-block storagebox-backup
+    journalctl -fu storagebox-backup
+    ```
+
 ## Rebuilds
 
 After setup, rebuild from raj's shell:

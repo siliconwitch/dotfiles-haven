@@ -28,8 +28,18 @@ TRAPUSR1() {
   zle && zle reset-prompt
 }
 
+_storage_box_check() {
+  local recent_success=(~/storagebox/last-success(N.mh-48))
+  storage_box_error=""
+
+  if (( ! $#recent_success )); then
+    storage_box_error=" %F{red}(storage box error)"
+  fi
+}
+
 add-zsh-hook precmd _git_fetch_async
 add-zsh-hook precmd vcs_info
+add-zsh-hook precmd _storage_box_check
 
 zstyle ':vcs_info:*' enable git
 zstyle ':vcs_info:*' formats " %F{cyan}%c%u%b%m%f"
@@ -56,4 +66,4 @@ zstyle ':vcs_info:git*+set-message:*' hooks git-untracked git-aheadbehind
 }
 
 setopt PROMPT_SUBST
-export PROMPT='%F{yellow}%m %F{13}%1~$vcs_info_msg_0_ '
+export PROMPT='%F{yellow}%m$storage_box_error %F{13}%1~$vcs_info_msg_0_ '
