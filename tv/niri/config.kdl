@@ -4,8 +4,11 @@ workspace "steam"
 workspace "desk"
 
 output "HDMI-A-1" {
-    mode "3840x2160" // the projector's 4K tops out at 30 Hz
-    scale 2          // keeps the 1080p layout size
+    // Temporary 1080p30 until the new HDMI cable arrives. The current cable can't hold 4K, and 1080p60 interferes
+    // with Wi-Fi. The projector doesn't advertise 1080p30, so this forces CEA-861 VIC 34 timing
+    modeline 74.25 1920 2008 2052 2200 1080 1084 1089 1125 "+hsync" "+vsync"
+    // mode "3840x2160" // the projector's 4K tops out at 30 Hz
+    // scale 2          // keeps the 1080p layout size
 }
 
 // YouTube's TV interface only loads for a TV user agent. Its own profile keeps that agent out of the desk browser
